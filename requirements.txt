@@ -44,5 +44,8 @@ tzdata==2025.2
 urllib3==2.4.0
 watchdog==6.0.0
 xlrd==2.0.1
+pytz
+
 openpyxl==3.1.2
 XlsxWriter==3.2.3
+
