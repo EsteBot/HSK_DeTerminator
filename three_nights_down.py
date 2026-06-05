@@ -124,7 +124,7 @@ def process_uploaded_file(uploaded_file):
             df = pd.read_excel(
                 uploaded_file,
                 sheet_name='Sheet1',
-                header=None)
+                header=None,
                 skiprows=16)
             
             # --- TEMPORARY DEBUG CODE ---
