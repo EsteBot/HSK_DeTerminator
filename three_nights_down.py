@@ -242,8 +242,8 @@ def process_uploaded_file(uploaded_file):
             else:
                 st.markdown(
                         "<div style='background-color:#fff3e0;padding:15px;border-radius:10px;'>"
-                        "<h4 style='color:#e65100;'>🪡 Not to burst your soap bubble, but there aren't!</h4>"
-                        "<p style='font-size:16px;color:#3b1e00;'>any stay-over rooms scheduled for service today. 📅</p>"
+                        "<h4 style='color:#e65100;'>🪡 Not to burst your soap bubble!</h4>"
+                        "<p style='font-size:16px;color:#3b1e00;'>but there aren't any stay-over rooms scheduled for service today. 📅</p>"
                         "</div>",
                         unsafe_allow_html=True)
 
