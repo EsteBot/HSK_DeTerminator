@@ -17,7 +17,6 @@ def get_housekeeping_dates(arrival, departure):
 def should_get_housekeeping_today(arrival, departure, today):
     return today in [d.date() for d in get_housekeeping_dates(arrival, departure)]
 
-
 def apply_excel_formatting(ws, guest_data_dict, today):
     """Formats the new workbook and populates data."""
     thin_border = Border(
@@ -205,8 +204,6 @@ def process_uploaded_file(uploaded_file):
 
                 st.dataframe(df_today)
 
-            
-
                 # Part 3 & 4: CREATE AND POPULATE NEW WORKBOOK
                 new_wb = Workbook()
                 new_ws = new_wb.active
@@ -217,10 +214,10 @@ def process_uploaded_file(uploaded_file):
                 output = BytesIO()
                 new_wb.save(output)
                 processed_data = output.getvalue()
-                final_file_name = f"In House Guest List {today.strftime('%Y%m%d')}.xlsx"
+                final_file_name = f"HSK List {today.strftime('%Y%m%d')}.xlsx"
 
                 if st.download_button(
-                    label="Download Final Guest List (.xlsx)",
+                    label="Download HSK List (.xlsx)",
                     data=processed_data,
                     file_name=final_file_name,
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
