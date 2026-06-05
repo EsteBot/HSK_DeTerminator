@@ -125,7 +125,7 @@ def process_uploaded_file(uploaded_file):
                 uploaded_file,
                 sheet_name='Sheet1',
                 header=None)
-                skiprows=15)
+                skiprows=16)
             
             # --- TEMPORARY DEBUG CODE ---
             #st.subheader("🛠️ Debug Mode: Raw Excel Upload")
