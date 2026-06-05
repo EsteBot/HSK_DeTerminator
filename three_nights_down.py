@@ -124,8 +124,13 @@ def process_uploaded_file(uploaded_file):
             df = pd.read_excel(
                 uploaded_file,
                 sheet_name='Sheet1',
-                header=None,
-                skiprows=15)
+                header=None)
+                #skiprows=15)
+            
+            # --- TEMPORARY DEBUG CODE ---
+            st.subheader("🛠️ Debug Mode: Raw Excel Upload")
+            st.dataframe(df.head(30)) # Shows the first 30 rows of everything
+            # ----------------------------
             
             st.subheader('')
             st.markdown("---")
