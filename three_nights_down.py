@@ -125,11 +125,11 @@ def process_uploaded_file(uploaded_file):
                 uploaded_file,
                 sheet_name='Sheet1',
                 header=None)
-                #skiprows=15)
+                skiprows=15)
             
             # --- TEMPORARY DEBUG CODE ---
-            st.subheader("🛠️ Debug Mode: Raw Excel Upload")
-            st.dataframe(df.head(30)) # Shows the first 30 rows of everything
+            #st.subheader("🛠️ Debug Mode: Raw Excel Upload")
+            #st.dataframe(df.head(30)) # Shows the first 30 rows of everything
             # ----------------------------
             
             st.subheader('')
@@ -141,7 +141,7 @@ def process_uploaded_file(uploaded_file):
             if not stop_row_index.empty:
                 df = df.iloc[:stop_row_index[0]]
 
-            df = df.iloc[:, [3, 6, 7, 9]].copy()
+            df = df.iloc[:, [3, 4 , 5, 6]].copy()
             df.columns = ['Room_Raw', 'Guest_Name', 'Arrival_Date_Raw', 'Depart_Date_Raw']
 
             # Clean and process the columns
