@@ -149,7 +149,7 @@ def process_uploaded_file(uploaded_file):
         for idx, row in df.head(30).iterrows():
             row_values = [str(val).strip() for val in row.values]
             
-            if 'Room' in row_values and 'Guest Name' in row_values and 'Arrival Date' in row_values and 'Depart Date' in row_values:
+            if 'Room' in row_values and 'Guest Name' in row_values and 'Arrive' in row_values and 'Depart' in row_values:
                 header_row_idx = idx
                 room_col_idx = row_values.index('Room')
                 guest_col_idx = row_values.index('Guest Name')
@@ -159,7 +159,7 @@ def process_uploaded_file(uploaded_file):
 
         # Safety Check: Stop gracefully if the layout changes drastically
         if header_row_idx is None:
-            st.error("❌ Structure mismatch: Could not find a row containing the exact headers: 'Room', 'Guest Name', 'Arrival Date', and 'Depart Date'.")
+            st.error("❌ Structure mismatch: Could not find a row containing the exact headers: 'Room', 'Guest Name', 'Arrive', and 'Depart'.")
             st.stop()
 
         # 3. SLICE THE DATAFRAME USING THE DISCOVERED INDICES
