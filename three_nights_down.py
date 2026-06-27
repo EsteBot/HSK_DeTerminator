@@ -117,135 +117,176 @@ def apply_excel_formatting(ws, guest_data_dict, today):
     return ws
 
 def process_uploaded_file(uploaded_file):
-    col_1, col_2, col_3 = st.columns([1, 3, 1])
-    with col_2:
-        try:
-            df = pd.read_excel(
-                uploaded_file,
-                sheet_name='Sheet1',
-                header=None,
-                skiprows=16)
+    # This renders everything inside col_3 right underneath your file uploader!
+    try:
+        # 1. Read everything as strings initially to keep raw grid positions stable
+        df = pd.read_excel(
+            uploaded_file,
+            sheet_name='Sheet1',
+            header=None,
+            dtype=str
+        )
+        
+        # --- SECRET RAW DEBUG MODE (Triggers via ?debug=true in URL) ---
+        if "debug" in st.query_params and st.query_params["debug"] == "true":
+            st.warning("🚨 RAW EXCEL DUMP START 🚨")
+            st.write(f"Total Rows found: {df.shape[0]} | Total Columns found: {df.shape[1]}")
+            st.dataframe(df)
+            st.warning("🚨 RAW EXCEL DUMP END 🚨")
+        
+        st.subheader('')
+        st.markdown("---")
+        st.success(f"Successfully read data from **{uploaded_file.name}**.")
+
+        header_row_idx = None
+        room_col_idx = None
+        guest_col_idx = None
+        arrival_col_idx = None
+        depart_col_idx = None
+
+        # 2. DYNAMICALLY LOCATE THE EXACT HEADERS
+        # Scan the top 30 rows for exact text matches
+        for idx, row in df.head(30).iterrows():
+            row_values = [str(val).strip() for val in row.values]
             
-            # --- TEMPORARY DEBUG CODE ---
-            #st.subheader("🛠️ Debug Mode: Raw Excel Upload")
-            #st.dataframe(df.head(30)) # Shows the first 30 rows of everything
-            # ----------------------------
-            
-            st.subheader('')
-            st.markdown("---")
-            st.success(f"Successfully read data from **{uploaded_file.name}**.")
+            if 'Room' in row_values and 'Guest Name' in row_values and 'Arrival Date' in row_values and 'Depart Date' in row_values:
+                header_row_idx = idx
+                room_col_idx = row_values.index('Room')
+                guest_col_idx = row_values.index('Guest Name')
+                arrival_col_idx = row_values.index('Arrival Date')
+                depart_col_idx = row_values.index('Depart Date')
+                break
 
-            # Filter the DataFrame using the 'Total Rooms' stop condition
-            stop_row_index = df[df.iloc[:, 3].astype(str).str.contains('Total Rooms', na=False)].index
-            if not stop_row_index.empty:
-                df = df.iloc[:stop_row_index[0]]
+        # Safety Check: Stop gracefully if the layout changes drastically
+        if header_row_idx is None:
+            st.error("❌ Structure mismatch: Could not find a row containing the exact headers: 'Room', 'Guest Name', 'Arrival Date', and 'Depart Date'.")
+            st.stop()
 
-            df = df.iloc[:, [3, 4 , 5, 6]].copy()
-            df.columns = ['Room_Raw', 'Guest_Name', 'Arrival_Date_Raw', 'Depart_Date_Raw']
+        # 3. SLICE THE DATAFRAME USING THE DISCOVERED INDICES
+        raw_matrix = df.copy() # Make a quick back-up reference
+        df = raw_matrix.iloc[header_row_idx + 1:].reset_index(drop=True)
+        
+        # Pull only the exact matching columns we found dynamically
+        df = df.iloc[:, [room_col_idx, guest_col_idx, arrival_col_idx, depart_col_idx]].copy()
+        df.columns = ['Room_Raw', 'Guest_Name', 'Arrival_Date_Raw', 'Depart_Date_Raw']
 
-            # Clean and process the columns
-            # 1. Fill any NaN/blank values in 'Room_Raw' with a placeholder string ('0-')
-            df['Room_Raw'] = df['Room_Raw'].fillna('0-').astype(str)
+        # 4. Filter out everything after 'Total Rooms'
+        stop_row_index = df[df.iloc[:, 0].astype(str).str.contains('Total Rooms', na=False)].index
+        if not stop_row_index.empty:
+            df = df.iloc[:stop_row_index[0]]
 
-            # 2. Extract the room number (before the dash)
-            df['Room_Number'] = df['Room_Raw'].str.split('-').str[0]
+        # Admin Debug Info
+        if "debug" in st.query_params and st.query_params["debug"] == "true":
+            st.write(f"🎯 HSK Match Row: {header_row_idx + 1} | Room: Col {room_col_idx} | Guest: Col {guest_col_idx} | Arrival: Col {arrival_col_idx} | Depart: Col {depart_col_idx}")
+            st.dataframe(df)
 
-            # 3. Convert to integer (this is now safe because we filled the blanks with '0')
-            df['Room_Number'] = df['Room_Number'].astype(int)
+        # =================================================================
+        # YOUR ORIGINAL UNTOUCHED PROCESSING CODE CONTINUES BELOW ⬇️
+        # =================================================================
+        
+        # Clean and process the columns
+        # 1. Fill any NaN/blank values in 'Room_Raw' with a placeholder string ('0-')
+        df['Room_Raw'] = df['Room_Raw'].fillna('0-').astype(str)
 
-            # 4. Remove any placeholder rows added in step 1 (where Room_Number is 0)
-            df.drop(df[df['Room_Number'] == 0].index, inplace=True)
+        # 2. Extract the room number (before the dash)
+        df['Room_Number'] = df['Room_Raw'].str.split('-').str[0]
 
-            # Extract dates and format 
-            df['Arrival_Date'] = pd.to_datetime(df['Arrival_Date_Raw'], format='%m/%d/%y', errors='coerce')
-            df['Departure_Date'] = pd.to_datetime(df['Depart_Date_Raw'], format='%m/%d/%y', errors='coerce')
-            df.dropna(subset=['Room_Number', 'Arrival_Date', 'Departure_Date'], inplace=True)
+        # 3. Convert to integer (this is now safe because we filled the blanks with '0')
+        df['Room_Number'] = df['Room_Number'].astype(int)
 
-            # Rename Room_Number to 'Room'
-            df.rename(columns={'Room_Number': 'Room'}, inplace=True)
+        # 4. Remove any placeholder rows added in step 1 (where Room_Number is 0)
+        df.drop(df[df['Room_Number'] == 0].index, inplace=True)
 
-            df.sort_values(by='Room', inplace=True)
+        # Extract dates and format 
+        df['Arrival_Date'] = pd.to_datetime(df['Arrival_Date_Raw'], format='%m/%d/%y', errors='coerce')
+        df['Departure_Date'] = pd.to_datetime(df['Depart_Date_Raw'], format='%m/%d/%y', errors='coerce')
+        df.dropna(subset=['Room_Number', 'Arrival_Date', 'Departure_Date'], inplace=True)
 
-            # Reorder columns if needed
-            df = df[['Room', 'Guest_Name', 'Arrival_Date', 'Departure_Date']]
+        # Rename Room_Number to 'Room'
+        df.rename(columns={'Room_Number': 'Room'}, inplace=True)
 
-            # Reset index to start at 1 and name it 'CleanDex'
-            df.index = range(1, len(df) + 1)
-            df.index.name = 'CleanDex'
+        df.sort_values(by='Room', inplace=True)
 
-            # Build dictionary using 'Room' as key
-            guest_data_dict = df.set_index('Room')[['Guest_Name', 'Arrival_Date', 'Departure_Date']].to_dict('index')
+        # Reorder columns if needed
+        df = df[['Room', 'Guest_Name', 'Arrival_Date', 'Departure_Date']]
 
-            df['Arrival_Date'] = df['Arrival_Date'].dt.strftime('%m/%d/%Y')
-            df['Departure_Date'] = df['Departure_Date'].dt.strftime('%m/%d/%Y')
+        # Reset index to start at 1 and name it 'CleanDex'
+        df.index = range(1, len(df) + 1)
+        df.index.name = 'CleanDex'
 
-            # Step 6: Feedback
-            st.info(f"Loaded **{len(guest_data_dict)}** guest records.")
+        # Build dictionary using 'Room' as key
+        guest_data_dict = df.set_index('Room')[['Guest_Name', 'Arrival_Date', 'Departure_Date']].to_dict('index')
 
-            st.markdown("---")
+        df['Arrival_Date'] = df['Arrival_Date'].dt.strftime('%m/%d/%Y')
+        df['Departure_Date'] = df['Departure_Date'].dt.strftime('%m/%d/%Y')
 
-            local_tz = ZoneInfo("America/Denver")
-            today = datetime.now(local_tz).date()
+        # Step 6: Feedback
+        st.info(f"Loaded **{len(guest_data_dict)}** guest records.")
 
-            housekeeping_today_dict = {
-                room: data
-                for room, data in guest_data_dict.items()
-                if should_get_housekeeping_today(data['Arrival_Date'], data['Departure_Date'], today)
-            }
+        st.markdown("---")
 
-            st.subheader('')
-            st.subheader("✅ Housekeeping Needed Today")
-            if housekeeping_today_dict:
-                st.markdown(f"🛏️ Rooms needing housekeeping: <span style='font-size:24px; font-weight:bold;'>{len(housekeeping_today_dict)}</span>",
-                            unsafe_allow_html=True)
-                df_today = df[df['Room'].isin(housekeeping_today_dict.keys())].copy()
-                df_today.index = range(1, len(df_today) + 1)
-                df_today.index.name = 'CleanDex'
+        local_tz = ZoneInfo("America/Denver")
+        today = datetime.now(local_tz).date()
 
-                st.dataframe(df_today)
+        housekeeping_today_dict = {
+            room: data
+            for room, data in guest_data_dict.items()
+            if should_get_housekeeping_today(data['Arrival_Date'], data['Departure_Date'], today)
+        }
 
-                # Part 3 & 4: CREATE AND POPULATE NEW WORKBOOK
-                new_wb = Workbook()
-                new_ws = new_wb.active
-                new_ws.page_setup.orientation = new_ws.ORIENTATION_LANDSCAPE
-                new_ws = apply_excel_formatting(new_ws, guest_data_dict, today)
-
-                # Part 5: PREPARE AND SAVE THE FINAL WORKBOOK for download
-                output = BytesIO()
-                new_wb.save(output)
-                processed_data = output.getvalue()
-                final_file_name = f"HSK List {today.strftime('%Y%m%d')}.xlsx"
-
-                if st.download_button(
-                    label="Download HSK List (.xlsx)",
-                    data=processed_data,
-                    file_name=final_file_name,
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    help="Click to download the newly created and formatted guest list file."):
-                    st.markdown(
-                        "<div style='background-color:#e0f7fa;padding:15px;border-radius:10px;'>"
-                        "<h3 style='color:#00796b;'>💾 File downloaded, Let's hit the sheets!</h3>"
-                        "<p style='font-size:24px;color:#00332e;'>The spreadsheets! Jeez! 📋</p>"
-                        "</div>",
+        st.subheader('')
+        st.subheader("✅ Housekeeping Needed Today")
+        if housekeeping_today_dict:
+            st.markdown(f"🛏️ Rooms needing housekeeping: <span style='font-size:24px; font-weight:bold;'>{len(housekeeping_today_dict)}</span>",
                         unsafe_allow_html=True)
-                else:
-                    st.markdown(
-                        "<div style='background-color:#fff3e0;padding:15px;border-radius:10px;'>"
-                        "<h4 style='color:#e65100;'>🫧 Sounds like we're getting into BUBBLE today!</h4>"
-                        "<p style='font-size:16px;color:#3b1e00;'>Hit download to get a printable list. ✨</p>"
-                        "</div>",
-                        unsafe_allow_html=True)
-                    
+            df_today = df[df['Room'].isin(housekeeping_today_dict.keys())].copy()
+            df_today.index = range(1, len(df_today) + 1)
+            df_today.index.name = 'CleanDex'
+
+            st.dataframe(df_today)
+
+            # Part 3 & 4: CREATE AND POPULATE NEW WORKBOOK
+            new_wb = Workbook()
+            new_ws = new_wb.active
+            new_ws.page_setup.orientation = new_ws.ORIENTATION_LANDSCAPE
+            new_ws = apply_excel_formatting(new_ws, guest_data_dict, today)
+
+            # Part 5: PREPARE AND SAVE THE FINAL WORKBOOK for download
+            output = BytesIO()
+            new_wb.save(output)
+            processed_data = output.getvalue()
+            final_file_name = f"HSK List {today.strftime('%Y%m%d')}.xlsx"
+
+            if st.download_button(
+                label="Download HSK List (.xlsx)",
+                data=processed_data,
+                file_name=final_file_name,
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                help="Click to download the newly created and formatted guest list file."):
+                st.markdown(
+                    "<div style='background-color:#e0f7fa;padding:15px;border-radius:10px;'>"
+                    "<h3 style='color:#00796b;'>💾 File downloaded, Let's hit the sheets!</h3>"
+                    "<p style='font-size:24px;color:#00332e;'>The spreadsheets! Jeez! 📋</p>"
+                    "</div>",
+                    unsafe_allow_html=True)
             else:
                 st.markdown(
-                        "<div style='background-color:#fff3e0;padding:15px;border-radius:10px;'>"
-                        "<h4 style='color:#e65100;'>🪡 Not to burst your soap bubble!</h4>"
-                        "<p style='font-size:16px;color:#3b1e00;'>but there aren't any stay-over rooms scheduled for service today. 📅</p>"
-                        "</div>",
-                        unsafe_allow_html=True)
+                    "<div style='background-color:#fff3e0;padding:15px;border-radius:10px;'>"
+                    "<h4 style='color:#e65100;'>🫧 Sounds like we're getting into BUBBLE today!</h4>"
+                    "<p style='font-size:16px;color:#3b1e00;'>Hit download to get a printable list. ✨</p>"
+                    "</div>",
+                    unsafe_allow_html=True)
+                
+        else:
+            st.markdown(
+                "<div style='background-color:#fff3e0;padding:15px;border-radius:10px;'>"
+                "<h4 style='color:#e65100;'>🪡 Not to burst your soap bubble!</h4>"
+                "<p style='font-size:16px;color:#3b1e00;'>but there aren't any stay-over rooms scheduled for service today. 📅</p>"
+                "</div>",
+                unsafe_allow_html=True)
 
-        except Exception as e:
-                st.error(f"An unexpected error occurred during processing: {e}")
+    except Exception as e:
+        st.error(f"An unexpected error occurred during processing: {e}")
 
 st.set_page_config(layout="wide", initial_sidebar_state="expanded")
 
