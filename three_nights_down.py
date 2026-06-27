@@ -153,8 +153,8 @@ def process_uploaded_file(uploaded_file):
                 header_row_idx = idx
                 room_col_idx = row_values.index('Room')
                 guest_col_idx = row_values.index('Guest Name')
-                arrival_col_idx = row_values.index('Arrival Date')
-                depart_col_idx = row_values.index('Depart Date')
+                arrival_col_idx = row_values.index('Arrive')
+                depart_col_idx = row_values.index('Depart')
                 break
 
         # Safety Check: Stop gracefully if the layout changes drastically
