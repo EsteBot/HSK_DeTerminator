@@ -117,14 +117,18 @@ def apply_excel_formatting(ws, guest_data_dict, today):
     return ws
 
 def process_uploaded_file(uploaded_file):
-    # This renders everything inside col_3 right underneath your file uploader!
     try:
-        # 1. Read everything as strings initially to keep raw grid positions stable
+        # DYNAMICALLY DETERMINE THE CORRECT ENGINE TO PREVENT SEGFAULTS
+        file_ext = uploaded_file.name.split('.')[-1].lower()
+        engine_to_use = 'xlrd' if file_ext == 'xls' else 'openpyxl'
+
+        # 1. Read everything as strings initially using the explicit engine
         df = pd.read_excel(
             uploaded_file,
             sheet_name='Sheet1',
             header=None,
-            dtype=str
+            dtype=str,
+            engine=engine_to_use
         )
         
         # --- SECRET RAW DEBUG MODE (Triggers via ?debug=true in URL) ---
@@ -132,7 +136,7 @@ def process_uploaded_file(uploaded_file):
             st.warning("🚨 RAW EXCEL DUMP START 🚨")
             st.write(f"Total Rows found: {df.shape[0]} | Total Columns found: {df.shape[1]}")
             st.dataframe(df)
-            st.warning("🚨 RAW EXCEL DUMP END 🚨")
+            st.warning("🚨 RAW EXCEL DUMP END 🚨"))
         
         st.subheader('')
         st.markdown("---")
