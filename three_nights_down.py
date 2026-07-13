@@ -136,7 +136,7 @@ def process_uploaded_file(uploaded_file):
             st.warning("🚨 RAW EXCEL DUMP START 🚨")
             st.write(f"Total Rows found: {df.shape[0]} | Total Columns found: {df.shape[1]}")
             st.dataframe(df)
-            st.warning("🚨 RAW EXCEL DUMP END 🚨"))
+            st.warning("🚨 RAW EXCEL DUMP END 🚨")
         
         st.subheader('')
         st.markdown("---")
